@@ -10,8 +10,22 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/user"
 	"regexp"
 )
+
+func amIRoot() (bool, error) {
+	u, err := user.Current()
+
+	if err != nil {
+		return false, err
+	}
+
+	if u.Uid == "0" {
+		return true, nil
+	}
+	return false, nil
+}
 
 // CopyZipWithoutFile copys the zip file to _new, then renames the old
 // one to _old leaving the new one in the old one's spot.  It
@@ -21,19 +35,33 @@ func CopyZipWithoutFile(origPath string, skipFileRE *regexp.Regexp, newSuffix st
 	// open the source zip first in case of errors.
 	origZip, err := zip.OpenReader(origPath)
 	if err != nil {
+		count.Incr("zip-copy-file-open-err")
 		return err
 	}
 	defer origZip.Close()
 
+	oldStat, err := os.Stat(origPath)
+	if err != nil {
+		count.Incr("zip-copy-file-stat-err")
+		return err
+	}
+
 	newFileName := origPath + newSuffix
 	newFile, err := os.Create(newFileName)
 	if err != nil {
+		count.Incr("zip-copy-file-creat-err")
 		return err
 	}
 	defer newFile.Close()
+	err = newFile.Chmod(oldStat.Mode())
+	if err != nil {
+		count.Incr("zip-copy-file-chmod-err")
+		return err
+	}
 
 	newZip := zip.NewWriter(newFile)
 	if err != nil {
+		count.Incr("zip-copy-file-new-writer-err")
 		return err
 	}
 	defer newZip.Close()

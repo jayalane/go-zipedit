@@ -3,6 +3,7 @@
 package zipedit
 
 import (
+	"os"
 	"regexp"
 	"testing"
 )
@@ -32,8 +33,10 @@ func TestDiff(t *testing.T) {
 	if err != nil {
 		t.Fatal("Re failed to compile", err)
 	}
+	srcPath := "go-lll.zip"
+	dstPath := "go-lll.zip%%%"
 
-	eq, err := CompareZipFiles("go-lll.zip", "go-lll.zip%%%", filterRe)
+	eq, err := CompareZipFiles(srcPath, dstPath, filterRe)
 
 	if err != nil {
 		t.Fatal("Got error:", err)
@@ -42,4 +45,18 @@ func TestDiff(t *testing.T) {
 		t.Fatal("Not equal!")
 	}
 
+	srcStat, err := os.Stat(srcPath)
+	if err != nil {
+		t.Fatal("Stat error:", err)
+	}
+	srcMod := srcStat.Mode()
+
+	dstStat, err := os.Stat(srcPath)
+	if err != nil {
+		t.Fatal("Stat error:", err)
+	}
+	dstMod := dstStat.Mode()
+	if dstMod != srcMod {
+		t.Fatal("Modes differ", srcMod, dstMod)
+	}
 }
