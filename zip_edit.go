@@ -6,12 +6,14 @@ import (
 	"archive/zip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	count "github.com/jayalane/go-counter"
 	"io"
 	"io/fs"
 	"os"
 	"os/user"
 	"regexp"
+	"syscall"
 )
 
 func amIRoot() (bool, error) {
@@ -25,6 +27,22 @@ func amIRoot() (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func syncOwners(newFile *os.File, oldStat fs.FileInfo) error {
+
+	var UID int
+	var GID int
+	if stat, ok := oldStat.Sys().(*syscall.Stat_t); ok {
+		UID = int(stat.Uid)
+		GID = int(stat.Gid)
+	} else {
+		// we are not in linux, this won't work anyway in windows,
+		// but maybe you want to log warnings
+		return errors.New("syscal stat failed")
+	}
+	err := newFile.Chown(UID, GID)
+	return err
 }
 
 // CopyZipWithoutFile copys the zip file to _new, then renames the old
@@ -53,10 +71,20 @@ func CopyZipWithoutFile(origPath string, skipFileRE *regexp.Regexp, newSuffix st
 		return err
 	}
 	defer newFile.Close()
+
 	err = newFile.Chmod(oldStat.Mode())
 	if err != nil {
 		count.Incr("zip-copy-file-chmod-err")
 		return err
+	}
+
+	doChown, err := amIRoot()
+	if doChown {
+		err = syncOwners(newFile, oldStat)
+		if err != nil {
+			count.Incr("zip-copy-file-chown-err")
+			return err
+		}
 	}
 
 	newZip := zip.NewWriter(newFile)

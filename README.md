@@ -13,6 +13,9 @@ a new file named the same plus newSuffix
 
 Any paths that match skipFileRE will not be copied.
 
+The file mode will be the same as the source. If run as root, it will
+preserve ownership as well.
+
 The sizes seem a bit off, perhaps different Deflate implementations?
 
 
