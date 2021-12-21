@@ -120,7 +120,7 @@ func CopyZipWithoutFile(origPath string, skipFileRE *regexp.Regexp, newSuffix st
 			sourceFile.Close()
 			return err
 		}
-		count.IncrDelta("zip-copy-file", n)
+		count.IncrDelta("zip-copy-file-len", n)
 		sourceFile.Close()
 	}
 	count.Incr("zip-copy-file-archive-ok")
