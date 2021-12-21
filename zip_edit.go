@@ -1,5 +1,8 @@
 // -*- tab-width:2 -*-
 
+// Package zipedit has two functions, one to copy a zip file into a new file with some files skipped,
+// and one to validation 2 zip files are identical except for those files.  The files to omit
+// are specified by a regular expression
 package zipedit
 
 import (
@@ -16,6 +19,7 @@ import (
 	"syscall"
 )
 
+// amIRoot returns true iff the current user is root
 func amIRoot() (bool, error) {
 	u, err := user.Current()
 
@@ -29,6 +33,8 @@ func amIRoot() (bool, error) {
 	return false, nil
 }
 
+// syncOwners makes the new file have the same uid/gid as the source
+// file.
 func syncOwners(newFile *os.File, oldStat fs.FileInfo) error {
 
 	var UID int
@@ -121,6 +127,8 @@ func CopyZipWithoutFile(origPath string, skipFileRE *regexp.Regexp, newSuffix st
 	return nil
 }
 
+// hashReadCloser taks a read closer and returns the sha256 for it
+// and also closers it.
 func hashReadCloser(a io.ReadCloser) (string, error) {
 	defer a.Close()
 
@@ -137,17 +145,19 @@ func hashReadCloser(a io.ReadCloser) (string, error) {
 func compareReaderHash(a io.ReadCloser, b io.ReadCloser) (bool, error) {
 	aStr, err := hashReadCloser(a)
 	if err != nil {
-		count.Incr("zip-diff-hash-err")
+		count.Incr("zip-diff-hash-err-source")
 		return false, err
 	}
 	bStr, err := hashReadCloser(b)
 	if err != nil {
-		count.Incr("zip-diff-hash-err-other")
+		count.Incr("zip-diff-hash-err-destination")
 		return false, err
 	}
 	return (aStr == bStr), nil
 }
 
+// compareFileInfo takes two FileInfo and returns
+// true iff they are identical
 func compareFileInfo(a fs.FileInfo, b fs.FileInfo) bool {
 	if a.Name() != b.Name() {
 		return false
@@ -167,11 +177,13 @@ func compareFileInfo(a fs.FileInfo, b fs.FileInfo) bool {
 	return true
 }
 
-// CompareZipFiles checks that everythingin sourcePath not matching skipFileRE is in destPath with same SHA & FileInfo
+// CompareZipFiles checks that everything in sourcePath not matching
+// skipFileRE is in destPath with same SHA & FileInfo
 func CompareZipFiles(
 	sourcePath string,
 	destPath string,
-	skipFileRE *regexp.Regexp) (bool, error) {
+	skipFileRE *regexp.Regexp,
+) (bool, error) {
 
 	count.Incr("zip-diff-file-archive-start")
 	// open the source zip first in case of errors.
@@ -200,16 +212,22 @@ func CompareZipFiles(
 		}
 		sourceFile, err := f.Open()
 		if err != nil {
-			count.Incr("zip-diff-entry-open-err")
+			count.Incr("zip-diff-entry-open-src-err")
 			return false, err
 		}
 		if f.FileHeader.FileInfo().IsDir() {
 			count.Incr("zip-diff-entry-skip-dir")
 			continue
 		}
-		destFile, err := diffZip.Open(f.Name)
+		var fname string
+		if len(f.Name) > 0 && f.Name[0:1] == "/" {
+			fname = f.Name[1:len(f.Name)]
+		} else {
+			fname = f.Name
+		}
+		destFile, err := diffZip.Open(fname)
 		if err != nil {
-			count.Incr("zip-diff-entry-open-other-err")
+			count.Incr("zip-diff-entry-open-dest-err")
 			return false, err
 		}
 
