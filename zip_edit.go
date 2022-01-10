@@ -100,7 +100,11 @@ func CopyZipWithoutFile(origPath string, skipFileRE *regexp.Regexp, newSuffix st
 	}
 	defer newZip.Close()
 
-	newZip.SetComment(origZip.Comment)
+	err = newZip.SetComment(origZip.Comment)
+	if err != nil {
+		count.Incr("zip-copy-file-new-writer-set-comment-err")
+		return err
+	}
 	for _, f := range origZip.File {
 		if skipFileRE.MatchString(f.Name) {
 			count.Incr("zip-copy-file-skip-re")
