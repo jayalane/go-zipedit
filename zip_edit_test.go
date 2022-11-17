@@ -3,6 +3,7 @@
 package zipedit
 
 import (
+	count "github.com/jayalane/go-counter"
 	"os"
 	"regexp"
 	"testing"
@@ -10,6 +11,8 @@ import (
 
 // make a copy of a checked-in jar file
 func TestCopy(t *testing.T) {
+
+	count.InitCounters()
 
 	filter := "~$"
 
@@ -27,6 +30,9 @@ func TestCopy(t *testing.T) {
 
 // now check for equality
 func TestDiff(t *testing.T) {
+
+	count.InitCounters()
+
 	filter := "~$"
 
 	filterRe, err := regexp.Compile(filter)
