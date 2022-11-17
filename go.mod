@@ -1,5 +1,5 @@
 module github.com/jayalane/go-zipedit
 
-go 1.16
+go 1.19
 
-require github.com/jayalane/go-counter v0.0.0-20210327181920-3beb6a93b7e9
+require github.com/jayalane/go-counter v0.0.0-20221116014339-a6f7c5e3061a
